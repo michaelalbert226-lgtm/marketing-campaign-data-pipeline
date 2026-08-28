@@ -1,0 +1,10 @@
+Rule,Failed_Rows
+Invalid Income,0
+Invalid Customer Dates,0
+Invalid Birth Years,2
+Invalid Kidhome,0
+Invalid Teenhome,0
+Incorrect Total Children,0
+Invalid Total Spending,0
+Suspicious Income,1
+Invalid Campaign Values,0
