@@ -1,7 +1,27 @@
+# Virtual environment
 .venv/
+venv/
+env/
+
+# Python cache
 __pycache__/
 *.py[cod]
+
+# Logs
 logs/
-outputs/
+*.log
+
+# Database files
 *.db
+*.sqlite
+*.sqlite3
+
+# Jupyter
 .ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
