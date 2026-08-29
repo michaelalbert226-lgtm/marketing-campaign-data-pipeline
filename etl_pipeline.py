@@ -148,6 +148,10 @@ def validate_data(df):
     # Basic validation rules
     # -------------------------
     invalid_dates = df["Dt_Customer"].isna().sum()
+    if invalid_dates > 0:
+        logging.warning(
+        f"{invalid_dates} invalid customer dates detected."
+    )
 
     invalid_income = (
         df["Income"] < 0
@@ -188,7 +192,7 @@ def validate_data(df):
 
     if suspicious_income > 0:
         logging.warning(
-            f"{suspicious_income} suspecious income records detected."
+            f"{suspicious_income} suspicious income records detected."
             )
 
     # -------------------------
@@ -272,7 +276,7 @@ def validate_data(df):
     logging.info("Validation completed.")
     logging.info(f"Dataset status: {status}")
 
-    return quality_report
+    return quality_report, status
 #-------------------------------------------------
 #-------------------------------------------------
 def load_data(df, quality_report):
@@ -281,7 +285,7 @@ def load_data(df, quality_report):
     print("LOAD")
     print("=" * 70)
 
-    logging.info("loading Data.")
+    logging.info("Loading Data.")
     # Output paths
     output_dataset = (
         BASE_DIR
@@ -339,16 +343,20 @@ def main():
     df = transform_data(df)
 
     # VALIDATE
-    quality_report = validate_data(df)
+    quality_report, status = validate_data(df)
 
     # LOAD
-    load_data(df, quality_report)
+    if status == "PASS":
+        load_data(df, quality_report)
+        
+        print("LOAD COMPLETED SUCCESSFULLY")
+    else:
+        logging.warning("⚠️ Pipeline stopped: data quality review required.")
+        print("⚠️ Pipeline stopped: data quality review required.")
 
-    logging.info("Pipeline completed successfully.")
 
 if __name__ == "__main__":
     main()  
-
 
 
 
