@@ -195,6 +195,71 @@ def validate_data(df):
             f"{suspicious_income} suspicious income records detected."
             )
 
+    birth_year_mask = (
+    (df["Year_Birth"] < 1900) |
+    (df["Year_Birth"] > 2026)
+)
+
+    income_mask = (
+        df["Income"] == 666666
+    )
+
+    rejected_mask = (
+        birth_year_mask |
+        income_mask
+    )
+
+    rejected_records = df[rejected_mask].copy()
+    total_records = len(df)
+    rejected_count = len(rejected_records)
+    valid_count = total_records - rejected_count
+
+    rejection_rate = (
+        rejected_count / total_records * 100
+    )
+    
+
+    valid_records = df[~rejected_mask].copy()
+    print("Total records:", len(df))
+    print("Valid records:", len(valid_records))
+    print("Rejected records:", len(rejected_records))
+
+    rejected_records["rejected_reason"] = ""
+
+    rejected_records.loc[
+        birth_year_mask & income_mask,
+        "rejected_reason"
+    ] = "Invalid Birth Year; Suspicious Income"
+
+    rejected_records.loc[
+        birth_year_mask & ~income_mask,
+        "rejected_reason"
+    ] = "Invalid Birth Year"
+
+    rejected_records.loc[
+        income_mask & ~birth_year_mask,
+        "rejected_reason"
+    ] = "Suspicious Income"
+
+    rejected_records_path = (
+        BASE_DIR
+        / "datasets"
+        / "rejected_records.csv"
+    )
+
+    rejected_records.to_csv(
+        rejected_records_path,
+        index=False
+    )
+
+    logging.info(
+        f"Rejected records saved to: {rejected_records_path}"
+    )
+
+    print(
+        f"Rejected records saved to: {rejected_records_path}"
+    )
+
     # -------------------------
     # Campaign validation
     # -------------------------
@@ -276,10 +341,93 @@ def validate_data(df):
     logging.info("Validation completed.")
     logging.info(f"Dataset status: {status}")
 
-    return quality_report, status
+    return quality_report, status, valid_records, rejected_records
 #-------------------------------------------------
 #-------------------------------------------------
-def load_data(df, quality_report):
+def pipeline_summary(df, valid_records, rejected_records, status):
+
+    print("\n" + "=" * 70)
+    print("PIPELINE SUMMARY")
+    print("=" * 70)
+
+    total_records = len(df)
+    valid_count = len(valid_records)
+    rejected_count = len(rejected_records)
+
+    rejection_rate = (
+        rejected_count / total_records * 100
+    )
+
+    print("Total records:", total_records)
+    print("Valid records:", valid_count)
+    print("Rejected records:", rejected_count)
+    print(f"Rejection rate: {rejection_rate:.2f}%")
+    print("Dataset status:", status)
+
+    logging.info(
+        f"Pipeline summary | "
+        f"Total: {total_records} | "
+        f"Valid: {valid_count} | "
+        f"Rejected: {rejected_count} | "
+        f"Rejection rate: {rejection_rate:.2f}% | "
+        f"Status: {status}"
+    )
+
+    return (
+    total_records,
+    valid_count,
+    rejected_count,
+    rejection_rate
+)
+#-------------------------------------------------
+#-------------------------------------------------
+def save_pipeline_summary(
+    total_records,
+    valid_records,
+    rejected_records,
+    rejection_rate,
+    status
+):
+
+    summary_path = (
+        BASE_DIR
+        / "datasets"
+        / "pipeline_summary.csv"
+    )
+
+    summary = pd.DataFrame({
+        "Metric": [
+            "Total Records",
+            "Valid Records",
+            "Rejected Records",
+            "Rejection Rate",
+            "Dataset Status"
+        ],
+
+        "Value": [
+            total_records,
+            valid_records,
+            rejected_records,
+            f"{rejection_rate:.2f}%",
+            status
+        ]
+    })
+
+    summary.to_csv(
+        summary_path,
+        index=False
+    )
+
+    print(
+        f"Pipeline summary saved to: {summary_path}"
+    )
+
+    logging.info(
+        f"Pipeline summary saved to: {summary_path}"
+    )
+#-------------------------------------------------
+#-------------------------------------------------
+def load_data(valid_records, quality_report):
 
     print("\n" + "=" * 70)
     print("LOAD")
@@ -300,7 +448,7 @@ def load_data(df, quality_report):
     )
 
     # Save cleaned dataset
-    df.to_csv(
+    valid_records.to_csv(
         output_dataset,
         index=False
     )
@@ -343,16 +491,53 @@ def main():
     df = transform_data(df)
 
     # VALIDATE
-    quality_report, status = validate_data(df)
+    quality_report, status, valid_records, rejected_records = validate_data(df)
+
+    #PIPELINE SUMMARY
+    total_records, valid_count, rejected_count, rejection_rate = pipeline_summary(
+    df,
+    valid_records,
+    rejected_records,
+    status
+)
+
+    #SAVE PIPELINE SUMMARY
+    save_pipeline_summary(
+    total_records,
+    valid_count,
+    rejected_count,
+    rejection_rate,
+    status
+)
 
     # LOAD
-    if status == "PASS":
-        load_data(df, quality_report)
-        
-        print("LOAD COMPLETED SUCCESSFULLY")
+    if len(rejected_records) > 0:
+
+        logging.warning(
+        f"{len(rejected_records)} records rejected."
+    )
+
+    print(
+        f"⚠️ {len(rejected_records)} records rejected and quarantined."
+    )
+
+    if len(valid_records) > 0:
+
+        load_data(valid_records, quality_report)
+
+        logging.info(
+            f"{len(valid_records)} valid records loaded successfully."
+        )
+
+        print(
+            f"LOAD COMPLETED: {len(valid_records)} valid records loaded."
+        )
+
     else:
-        logging.warning("⚠️ Pipeline stopped: data quality review required.")
-        print("⚠️ Pipeline stopped: data quality review required.")
+
+        logging.error("No valid records available for loading.")
+
+        print("❌ No valid records available for loading.")
 
 
 if __name__ == "__main__":
