@@ -25,7 +25,7 @@ The pipeline includes:
 
 ```mermaid
 flowchart LR
-    A["Raw marketing data<br/>marketing_campaign.csv"] --> B["Extract<br/>Read TSV with Pandas"]
+    A["Raw marketing data<br/>marketing_campaign.csv"] --> B["Extract<br/>Read CSV with Pandas"]
     B --> C["Transform<br/>Clean, standardize, derive fields"]
     C --> D["Validate<br/>Run data-quality checks"]
     D --> E["Load<br/>Write datasets and report"]
